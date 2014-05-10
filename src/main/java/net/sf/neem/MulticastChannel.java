@@ -57,8 +57,8 @@ import java.util.UUID;
 import net.sf.neem.impl.Application;
 import net.sf.neem.impl.Buffers;
 import net.sf.neem.impl.Gossip;
-import net.sf.neem.impl.Overlay;
-import net.sf.neem.impl.Transport;
+import net.sf.neem.impl.Overlay; 
+import com.chiralbehaviors.neem.Transport;;
 
 /**
  * Channel interface to a NeEM epidemic multicast group. This interface is
@@ -144,7 +144,7 @@ public class MulticastChannel implements InterruptibleChannel,
         }
         isClosed = true;
         notifyAll();
-        net.close();
+        net.terminate();
     }
 
     /*

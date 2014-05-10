@@ -45,7 +45,7 @@ import java.util.UUID;
 
 import net.sf.neem.impl.Gossip;
 import net.sf.neem.impl.Overlay;
-import net.sf.neem.impl.Transport;
+import com.chiralbehaviors.neem.Transport;
 
 /**
  * Implementation of the NeEM management bean.
@@ -73,7 +73,7 @@ public class Protocol implements ProtocolMBean {
     }
 
     public int getAcceptedSocks() {
-        return net.accepted;
+        return net.getAccepted();
     }
 
     public int getBufferSize() {
@@ -81,15 +81,15 @@ public class Protocol implements ProtocolMBean {
     }
 
     public int getBytesReceived() {
-        return net.bytesIn;
+        return net.getBytesIn();
     }
 
     public int getBytesSent() {
-        return net.bytesOut;
+        return net.getBytesOut();
     }
 
     public int getConnectedSocks() {
-        return net.connected;
+        return net.getConnected();
     }
 
     public int getDataReceived() {
@@ -147,11 +147,11 @@ public class Protocol implements ProtocolMBean {
     }
 
     public int getPacketsReceived() {
-        return net.pktIn;
+        return net.getPktIn();
     }
 
     public int getPacketsSent() {
-        return net.pktOut;
+        return net.getPktOut();
     }
 
     public InetSocketAddress[] getPeerAddresses() {

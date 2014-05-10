@@ -40,6 +40,8 @@
 
 package net.sf.neem.impl;
 
+import com.chiralbehaviors.neem.Connection;
+
 /**
  * Low level connection handler. This is implemented by overlay management
  * modules to be informed of connections being opened and closed by the

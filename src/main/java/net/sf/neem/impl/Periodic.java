@@ -41,6 +41,7 @@
 package net.sf.neem.impl;
 
 import java.util.Random;
+import com.chiralbehaviors.neem.Transport;
 
 /**
  * A stopable and restartable periodic activity. This uses the scheduling

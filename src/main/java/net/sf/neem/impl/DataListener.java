@@ -41,6 +41,7 @@
 package net.sf.neem.impl;
 
 import java.nio.ByteBuffer;
+import com.chiralbehaviors.neem.Connection;
 
 /**
  * Low level handler for messages. This is called by connections to deliver

@@ -43,6 +43,7 @@ package net.sf.neem.impl;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
+import com.chiralbehaviors.neem.Connection;
 
 /**
  * Known but yet unreceived message. This is used to manage a retransmission

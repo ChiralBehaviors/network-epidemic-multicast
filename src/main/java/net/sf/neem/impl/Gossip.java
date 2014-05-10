@@ -45,6 +45,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Random;
 import java.util.UUID;
+import com.chiralbehaviors.neem.Connection;
+import com.chiralbehaviors.neem.Transport;
 
 /**
  * Implementation of gossip. Like bimodal, combines a forward retransmission

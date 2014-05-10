@@ -86,8 +86,9 @@ public class Drain {
                 bb.clear();
                 neem.read(bb);
                 bb.flip();
-                logger.info("{} {} {}", id, System.nanoTime() / 1000,
-                            new String(buf, 0, bb.remaining()));
+                logger.info(String.format("%s %s %s", id,
+                                          System.nanoTime() / 1000,
+                                          new String(buf, 0, bb.remaining())));
             }
         } catch (Exception e) {
             logger.error("exception caught", e);
