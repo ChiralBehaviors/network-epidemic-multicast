@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -28,7 +29,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 
 import net.sf.neem.impl.ConnectionListener;
 import net.sf.neem.impl.DataListener;
@@ -36,36 +36,27 @@ import net.sf.neem.impl.DataListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.hellblazer.pinkie.CommunicationsHandler;
+import com.hellblazer.pinkie.CommunicationsHandlerFactory;
 import com.hellblazer.pinkie.ServerSocketChannelHandler;
 import com.hellblazer.pinkie.SocketOptions;
-import com.hellblazer.pinkie.buffer.BufferProtocolFactory;
-import com.hellblazer.pinkie.buffer.BufferProtocolHandler;
 
 /**
  * @author hhildebrand
  * 
  */
 public class Transport {
-    private class ConnectionFactory extends BufferProtocolFactory {
+    private class ConnectionFactory implements CommunicationsHandlerFactory {
 
         /* (non-Javadoc)
-         * @see com.hellblazer.pinkie.buffer.BufferProtocolFactory#constructBufferProtocolHandler()
+         * @see com.hellblazer.pinkie.CommunicationsHandlerFactory#createCommunicationsHandler(java.nio.channels.SocketChannel)
          */
         @Override
-        public BufferProtocolHandler constructBufferProtocolHandler() {
-            Connection connection = new Connection(Transport.this,
-                                                   server.getLocalAddress());
-            connections.add(connection);
-            return connection;
-        }
+        public CommunicationsHandler createCommunicationsHandler(SocketChannel channel) {
 
-        /* (non-Javadoc)
-         * @see com.hellblazer.pinkie.buffer.BufferProtocolFactory#constructBufferProtocolHandler(java.net.InetSocketAddress)
-         */
-        @Override
-        public BufferProtocolHandler constructBufferProtocolHandler(InetSocketAddress remoteAddress) {
             Connection connection = new Connection(Transport.this,
-                                                   remoteAddress);
+                                                   server.getLocalAddress(),
+                                                   random, queueSize);
             connections.add(connection);
             return connection;
         }
@@ -75,27 +66,131 @@ public class Transport {
 
     private int                              accepted;
     private int                              bufferSize        = 1024;
-    private int                              bytesIn;
-    private int                              bytesOut;
-    private int                              connected;
-    private final Set<Connection>            connections       = new CopyOnWriteArraySet<>();
-    private int                              pktIn;
-    private int                              pktOut;
-    private int                              queueSize         = 10;
-    private Random                           random;
-    private final AtomicBoolean              running           = new AtomicBoolean();
-    private ScheduledExecutorService         scheduler;
-    private final ServerSocketChannelHandler server;
-    private final Map<Short, DataListener>   handlers          = new ConcurrentHashMap<Short, DataListener>();
-    private final ConnectionFactory          connectionFactory = new ConnectionFactory();
-
+    private int                              bytesIn           = 0;
+    private int                              bytesOut          = 0;
     private ConnectionListener               chandler;
+    private int                              connected         = 0;
+    private final ConnectionFactory          connectionFactory = new ConnectionFactory();
+    private final Set<Connection>            connections       = new CopyOnWriteArraySet<>();
+    private final Map<Short, DataListener>   handlers          = new ConcurrentHashMap<Short, DataListener>();
+    private int                              pktIn             = 0;
+    private int                              pktOut            = 0;
+    private int                              queueSize         = 10;
+    private final Random                     random;
+    private final AtomicBoolean              running           = new AtomicBoolean();
+    private final ScheduledExecutorService   scheduler;
+
+    private final ServerSocketChannelHandler server;
 
     public Transport(String name, SocketOptions options,
-                     InetSocketAddress endpoint) throws IOException {
+                     InetSocketAddress endpoint,
+                     ScheduledExecutorService scheduler, Random random)
+                                                                       throws IOException {
         this.server = new ServerSocketChannelHandler(name, options, endpoint,
                                                      scheduler,
                                                      connectionFactory);
+        this.scheduler = scheduler;
+        this.random = random;
+    }
+
+    public void add(InetSocketAddress addr) {
+        Connection connection = new Connection(Transport.this, addr, random,
+                                               queueSize);
+        connections.add(connection);
+    }
+
+    public int getAccepted() {
+        return accepted;
+    }
+
+    public int getBufferSize() {
+        return bufferSize;
+    }
+
+    public int getBytesIn() {
+        return bytesIn;
+    }
+
+    public int getBytesOut() {
+        return bytesOut;
+    }
+
+    public int getConnected() {
+        return connected;
+    }
+
+    public InetSocketAddress getLocalSocketAddress() {
+        return server.getLocalAddress();
+    }
+
+    public int getPktIn() {
+        return pktIn;
+    }
+
+    public int getPktOut() {
+        return pktOut;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public boolean getRunning() {
+        return running.get();
+    }
+
+    public void incPktIn() {
+        pktIn++;
+    }
+
+    public void incrementBytesIn(int i) {
+        bytesIn += i;
+    }
+
+    public void queue(Runnable task) {
+        schedule(task, 0);
+    }
+
+    public void resetCounters() {
+        accepted = connected = pktOut = pktIn = bytesOut = bytesIn = 0;
+    }
+
+    public void schedule(Runnable task, long delay) {
+        scheduler.schedule(task, delay, TimeUnit.MILLISECONDS);
+    }
+
+    public void setBufferSize(int size) {
+        this.bufferSize = size;
+    }
+
+    public void setConnectionListener(ConnectionListener handler) {
+        chandler = handler;
+    }
+
+    public void setDataListener(DataListener handler, short port) {
+        handlers.put(port, handler);
+    }
+
+    public void setQueueSize(int queueSize) {
+        this.queueSize = queueSize;
+    }
+
+    public void start() {
+        if (!running.compareAndSet(false, true)) {
+            return;
+        }
+        server.start();
+    }
+
+    public void terminate() {
+        if (!running.compareAndSet(true, false)) {
+            return;
+        }
+        server.terminate();
     }
 
     void deliver(final Connection source, final Short prt,
@@ -115,69 +210,6 @@ public class Transport {
                 }
             }
         });
-    }
-
-    /**
-     * Get local address.
-     */
-    public InetSocketAddress getLocalSocketAddress() {
-        return server.getLocalAddress();
-    }
-
-    public void add(InetSocketAddress addr) {
-        try {
-            connectionFactory.connect(addr, server);
-        } catch (IOException e) {
-            logger.warn("failed to add peer " + addr, e);
-        }
-    }
-
-    /**
-     * @return the queueSize
-     */
-    public int getQueueSize() {
-        return queueSize;
-    }
-
-    /**
-     * @param queueSize
-     *            the queueSize to set
-     */
-    public void setQueueSize(int queueSize) {
-        this.queueSize = queueSize;
-    }
-
-    public void start() {
-        if (!running.compareAndSet(false, true)) {
-            return;
-        }
-        server.start();
-    }
-
-    public void terminate() {
-        if (!running.compareAndSet(true, false)) {
-            return;
-        }
-        server.terminate();
-    }
-
-    public void setConnectionListener(ConnectionListener handler) {
-        chandler = handler;
-    }
-
-    public void setDataListener(DataListener handler, short port) {
-        handlers.put(port, handler);
-    }
-
-    /**
-     * Queue processing task.
-     */
-    public void queue(Runnable task) {
-        schedule(task, 0);
-    }
-
-    public void schedule(Runnable task, long delay) {
-        scheduler.schedule(task, delay, TimeUnit.MILLISECONDS);
     }
 
     void notifyClose(final Connection info) {
@@ -208,100 +240,16 @@ public class Transport {
     }
 
     /**
-     * @return the accepted
+     * @param n
      */
-    public int getAccepted() {
-        return accepted;
-    }
-
-    /**
-     * @return the bufferSize
-     */
-    public int getBufferSize() {
-        return bufferSize;
-    }
-
-    /**
-     * @return the bytesIn
-     */
-    public int getBytesIn() {
-        return bytesIn;
-    }
-
-    /**
-     * @return the bytesOut
-     */
-    public int getBytesOut() {
-        return bytesOut;
-    }
-
-    /**
-     * @return the connected
-     */
-    public int getConnected() {
-        return connected;
-    }
-
-    /**
-     * @return the pktIn
-     */
-    public int getPktIn() {
-        return pktIn;
-    }
-
-    /**
-     * @return the pktOut
-     */
-    public int getPktOut() {
-        return pktOut;
-    }
-
-    /**
-     * @return the random
-     */
-    public Random getRandom() {
-        return random;
-    }
-
-    /**
-     * @return the running
-     */
-    public AtomicBoolean getRunning() {
-        return running;
-    }
-
-    /**
-     * @return the scheduler
-     */
-    public ScheduledExecutorService getScheduler() {
-        return scheduler;
-    }
-
-    /**
-     * @return the handlers
-     */
-    public Map<Short, DataListener> getHandlers() {
-        return handlers;
-    }
-
-    /**
-     * @return the chandler
-     */
-    public ConnectionListener getChandler() {
-        return chandler;
+    public void incBytesOut(long n) {
+        bytesOut += n;
     }
 
     /**
      * 
      */
-    public void resetCounters() {
-        accepted = connected = pktOut = pktIn = bytesOut = bytesIn = 0;
-    }
-
-    /**
-     * @param size
-     */
-    public void setBufferSize(int size) {
-        this.bufferSize = size;
+    public void incPktOut() {
+        pktOut++;
     }
 }

@@ -45,10 +45,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Random;
 import java.util.UUID;
-
-import net.sf.neem.impl.Connection;
+ 
 import net.sf.neem.impl.Overlay;
-import net.sf.neem.impl.Transport;
+import com.chiralbehaviors.neem.Transport;
+import com.chiralbehaviors.neem.Connection;
 
 public class Glue {
     public static void main(String[] args) throws IOException {
@@ -94,8 +94,8 @@ public class Glue {
 
             Connection[] conns = mipl.connections();
             for (Connection conn : conns) {
-                System.out.println("Sending " + conn.listen + " to "
-                                   + targets[0].listen);
+                System.out.println("Sending " + conn.getListen() + " to "
+                                   + targets[0].getListen());
                 if (conn != targets[0]) {
                     mipl.tradePeers(targets[0], conn);
                 }

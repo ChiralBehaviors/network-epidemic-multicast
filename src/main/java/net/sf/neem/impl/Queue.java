@@ -40,9 +40,9 @@
 
 package net.sf.neem.impl;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of a FIFO queue with random purging.
@@ -64,7 +64,7 @@ public class Queue {
      * @param random
      */
     public Queue(int max, Random random) {
-        queue = new ArrayList<Queued>();
+        queue = new CopyOnWriteArrayList<>();
         this.max = max;
         rand = random;
     }
